@@ -1,0 +1,326 @@
+// ==========================================
+// server/services/api.service_group.service.js (FIXED)
+// ==========================================
+const db = require("../models");
+const ServiceGroup = db.serviceGroups;
+const Op = db.Sequelize.Op;
+const validator = require('validator');
+
+/**
+ * Tìm kiếm nhóm dịch vụ với phân trang
+ */
+exports.searchServiceGroups = async (filters, pagination) => {
+  try {
+    const { id, code, name_vi, is_active } = filters;
+    const { page = 1, size = 20 } = pagination;
+
+    const currentPage = parseInt(page);
+    const pageSize = parseInt(size);
+    const offset = (currentPage - 1) * pageSize;
+    
+    const where = {};
+
+    if (id) {
+      where.id = id;
+    }
+
+    if (code) {
+      where.code = {
+        [Op.like]: `%${code}%`
+      };
+    }
+
+    if (name_vi) {
+      where.name_vi = {
+        [Op.like]: `%${name_vi}%`
+      };
+    }
+
+    if (is_active !== undefined && is_active !== null && is_active !== '') {
+      where.is_active = is_active === 'true' || is_active === true;
+    }
+
+    const result = await ServiceGroup.findAndCountAll({
+      where,
+      limit: pageSize,
+      offset,
+      distinct: true,
+      order: [['created_at', 'DESC']]
+    });
+
+    return {
+      totalPage: Math.ceil(result.count / pageSize),
+      pageSize,
+      currentPage,
+      totalElements: result.count,
+      data: result.rows
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Lấy thông tin nhóm dịch vụ theo ID
+ */
+exports.getServiceGroupById = async (id) => {
+  try {
+    const serviceGroup = await ServiceGroup.findByPk(id);
+
+    if (!serviceGroup) {
+      return {
+        success: false,
+        message: 'Không tìm thấy nhóm dịch vụ'
+      };
+    }
+
+    return {
+      success: true,
+      serviceGroup
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Lấy danh sách tất cả nhóm dịch vụ đang active
+ */
+exports.getAllActiveServiceGroups = async () => {
+  try {
+    const serviceGroups = await ServiceGroup.findAll({
+      where: {
+        is_active: true
+      },
+      order: [['name_vi', 'ASC']],
+      attributes: ['id', 'code', 'name_vi', 'name_en', 'name_ja', 'name_cn', 'name_sp', 'is_active']
+    });
+
+    return {
+      success: true,
+      serviceGroups
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Kiểm tra mã nhóm đã tồn tại
+ */
+exports.checkCodeExists = async (code, excludeId = null) => {
+  const where = { code };
+  
+  if (excludeId) {
+    where.id = { [Op.ne]: excludeId };
+  }
+
+  const existing = await ServiceGroup.findOne({ where });
+  return !!existing;
+};
+
+/**
+ * Thêm mới nhóm dịch vụ
+ */
+exports.createServiceGroup = async (data) => {
+  try {
+    const { 
+      code, 
+      name_vi, 
+      name_en, 
+      name_ja, 
+      name_cn, 
+      name_sp, 
+      representative_image,
+      is_active
+    } = data;
+
+    // Validate mã code
+    if (!/^[^\s]{2,50}$/.test(code)) {
+      return {
+        success: false,
+        message: 'Mã nhóm dịch vụ phải từ 2-50 ký tự và không chứa khoảng trắng'
+      };
+    }
+
+    // Validate tên tiếng Việt
+    if (!name_vi || name_vi.trim().length < 2 || name_vi.trim().length > 255) {
+      return {
+        success: false,
+        message: 'Tên tiếng Việt phải từ 2-255 ký tự'
+      };
+    }
+
+    // Kiểm tra trùng mã
+    if (await this.checkCodeExists(code)) {
+      return {
+        success: false,
+        message: 'Mã nhóm dịch vụ đã tồn tại'
+      };
+    }
+
+    const serviceGroup = await ServiceGroup.create({
+      code: validator.escape(code.trim()),
+      name_vi: validator.escape(name_vi.trim()),
+      name_en: name_en ? validator.escape(name_en.trim()) : null,
+      name_ja: name_ja ? validator.escape(name_ja.trim()) : null,
+      name_cn: name_cn ? validator.escape(name_cn.trim()) : null,
+      name_sp: name_sp ? validator.escape(name_sp.trim()) : null,
+      representative_image: representative_image || null,
+      is_active: is_active !== undefined ? is_active : true
+    });
+
+    return {
+      success: true,
+      serviceGroup
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Cập nhật nhóm dịch vụ
+ */
+exports.updateServiceGroup = async (id, data) => {
+  try {
+    const serviceGroup = await ServiceGroup.findByPk(id);
+
+    if (!serviceGroup) {
+      return {
+        success: false,
+        notFound: true,
+        message: 'Không tìm thấy nhóm dịch vụ'
+      };
+    }
+
+    const { 
+      code, 
+      name_vi, 
+      name_en, 
+      name_ja, 
+      name_cn, 
+      name_sp, 
+      representative_image,
+      is_active 
+    } = data;
+    const updateData = {};
+
+    // Validate và cập nhật code
+    if (code !== undefined) {
+      if (!/^[^\s]{2,50}$/.test(code)) {
+        return {
+          success: false,
+          message: 'Mã nhóm dịch vụ phải từ 2-50 ký tự và không chứa khoảng trắng'
+        };
+      }
+
+      if (await this.checkCodeExists(code, id)) {
+        return {
+          success: false,
+          message: 'Mã nhóm dịch vụ đã tồn tại'
+        };
+      }
+
+      updateData.code = validator.escape(code.trim());
+    }
+
+    // Validate và cập nhật name_vi
+    if (name_vi !== undefined) {
+      if (!name_vi || name_vi.trim().length < 2 || name_vi.trim().length > 255) {
+        return {
+          success: false,
+          message: 'Tên tiếng Việt phải từ 2-255 ký tự'
+        };
+      }
+
+      updateData.name_vi = validator.escape(name_vi.trim());
+    }
+
+    // Cập nhật các tên khác
+    if (name_en !== undefined) {
+      updateData.name_en = name_en ? validator.escape(name_en.trim()) : null;
+    }
+
+    if (name_ja !== undefined) {
+      updateData.name_ja = name_ja ? validator.escape(name_ja.trim()) : null;
+    }
+
+    if (name_cn !== undefined) {
+      updateData.name_cn = name_cn ? validator.escape(name_cn.trim()) : null;
+    }
+
+    if (name_sp !== undefined) {
+      updateData.name_sp = name_sp ? validator.escape(name_sp.trim()) : null;
+    }
+
+    // Cập nhật ảnh đại diện
+    if (representative_image !== undefined) {
+      updateData.representative_image = representative_image || null;
+    }
+
+    // Cập nhật is_active
+    if (is_active !== undefined) {
+      updateData.is_active = is_active;
+    }
+
+    await serviceGroup.update(updateData);
+
+    // Lấy lại bản ghi đã update
+    const updatedServiceGroup = await ServiceGroup.findByPk(id);
+
+    return {
+      success: true,
+      serviceGroup: updatedServiceGroup
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Xóa một hoặc nhiều nhóm dịch vụ
+ */
+exports.deleteServiceGroups = async (ids) => {
+  try {
+    const deletedCount = await ServiceGroup.destroy({
+      where: {
+        id: {
+          [Op.in]: ids
+        }
+      }
+    });
+
+    return {
+      success: true,
+      deletedCount
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Bật/tắt trạng thái nhiều nhóm dịch vụ
+ */
+exports.toggleServiceGroups = async (ids, is_active) => {
+  try {
+    const [updatedCount] = await ServiceGroup.update(
+      { is_active },
+      {
+        where: {
+          id: {
+            [Op.in]: ids
+          }
+        }
+      }
+    );
+
+    return {
+      success: true,
+      updatedCount
+    };
+  } catch (error) {
+    throw error;
+  }
+};

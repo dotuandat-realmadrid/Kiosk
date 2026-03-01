@@ -1,0 +1,120 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-top {
+  padding: 0 220px;
+  background-color: var(--primary-color);
+  display: flex;
+  height: 90px;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--secondary-color);
+  z-index: 1002;
+}
+
+.header-top .logo {
+  display: flex;
+  align-items: center;
+}
+
+.header-top img {
+  height: 50px;
+  margin-right: 20px;
+}
+
+.header-top .cart {
+  color: var(--secondary-color);
+  font-size: 30px;
+}
+
+.heart-icon {
+  color: #1c5b41; /* Sử dụng màu chủ đạo của bạn */
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.heart-icon:hover {
+  color: #ff3e66; /* Chuyển sang màu đỏ khi hover */
+  transform: scale(1.2); /* Phóng to nhẹ */
+  filter: drop-shadow(
+    0 0 3px rgba(255, 62, 102, 0.5)
+  ); /* Tạo hiệu ứng ánh sáng nhẹ */
+}
+
+/* Hiệu ứng nhịp đập */
+.heart-icon:hover {
+  animation: heartbeat 1s infinite;
+}
+
+@keyframes heartbeat {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.2);
+  }
+  50% {
+    transform: scale(1);
+  }
+  75% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.cart-simple:hover .anticon-shopping-cart {
+  opacity: 0.85; /* Giảm độ đậm nhẹ */
+  transform: scale(1.08); /* Phóng to nhẹ */
+}
+
+.header-top .login {
+  display: flex;
+  align-items: center;
+}
+
+.header-bottom {
+  position: fixed;
+  top: 90px;
+  left: 0;
+  width: 100%;
+  padding: 0 220px;
+  height: 60px;
+  background-color: var(--secondary-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--primary-color);
+  font-weight: 600;
+  font-size: 18px;
+  z-index: 999;
+  transition: height 0.4s ease-in-out, opacity 0.3s ease-in-out;
+  overflow: hidden; /* Ẩn nội dung khi height = 0 */
+}
+
+.header-bottom.hidden {
+  height: 0px; /* Thu nhỏ hoàn toàn */
+  opacity: 0;
+  pointer-events: none; /* Không ảnh hưởng đến phần tử khác */
+  padding: 0 220px; /* Giữ padding để tránh co cụm nội dung */
+}
+
+.header-bottom .menu {
+  display: flex;
+}
+
+.header-bottom .menu .menu-item {
+  margin-right: 40px;
+}
+
+.header-bottom .menu-item.active .primary-link {
+  text-decoration: underline;
+}
