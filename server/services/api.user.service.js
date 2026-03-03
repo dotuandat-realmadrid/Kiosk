@@ -958,3 +958,160 @@ exports.updateUserCounter = async (userId, counterId) => {
     };
   }
 };
+
+// ==========================================
+// Lấy user theo counter_id (dùng cho quầy gọi số)
+// =========================================
+exports.getUserByCounterId = async (counterId) => {
+  try {
+    // Kiểm tra counter_id có hợp lệ không
+    if (!counterId) {
+      return {
+        success: false,
+        message: 'counter_id là bắt buộc',
+        data: null
+      };
+    }
+
+    // Kiểm tra counter tồn tại
+    const counter = await Counter.findByPk(counterId);
+    if (!counter) {
+      return {
+        success: false,
+        message: 'Quầy không tồn tại',
+        data: null
+      };
+    }
+
+    const user = await User.findOne({
+      where: { counter_id: counterId },
+      attributes: { exclude: ['password', 'login_attempts', 'lock_until'] },
+      include: [
+        {
+          model: Role,
+          as: 'roles',
+          attributes: ['id', 'code', 'name', 'description'],
+          through: { attributes: [] }
+        },
+        {
+          model: Position,
+          as: 'position',
+          attributes: ['id', 'code', 'name', 'description']
+        },
+        {
+          model: Counter,
+          as: 'counter',
+          attributes: ['id', 'code', 'name', 'counter_number', 'led_board_number', 'transaction_office_id', 'is_active']
+        },
+        {
+          model: TransactionOffice,
+          as: 'transaction_offices',
+          attributes: ['id', 'code', 'name', 'address'],
+          through: { attributes: [] }
+        }
+      ]
+    });
+
+    if (!user) {
+      return {
+        success: false,
+        message: 'Không tìm thấy nhân viên cho quầy này',
+        data: null
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Lấy thông tin nhân viên thành công',
+      data: user.toJSON()
+    };
+
+  } catch (error) {
+    console.error('Get user by counter_id error:', error);
+    return {
+      success: false,
+      message: 'Lỗi khi lấy thông tin nhân viên: ' + error.message,
+      data: null
+    };
+  }
+};
+
+/**
+ * ✅ Lấy user theo counter code (dùng cho quầy gọi số)
+ */
+exports.getUserByCounterCode = async (counterCode) => {
+  try {
+    // Kiểm tra counter code có hợp lệ không
+    if (!counterCode) {
+      return {
+        success: false,
+        message: 'counter code là bắt buộc',
+        data: null
+      };
+    }
+
+    // Kiểm tra counter tồn tại
+    const counter = await Counter.findOne({
+      where: { code: counterCode }
+    });
+    
+    if (!counter) {
+      return {
+        success: false,
+        message: 'Quầy không tồn tại',
+        data: null
+      };
+    }
+
+    const user = await User.findOne({
+      where: { counter_id: counter.id },
+      attributes: { exclude: ['password', 'login_attempts', 'lock_until'] },
+      include: [
+        {
+          model: Role,
+          as: 'roles',
+          attributes: ['id', 'code', 'name', 'description'],
+          through: { attributes: [] }
+        },
+        {
+          model: Position,
+          as: 'position',
+          attributes: ['id', 'code', 'name', 'description']
+        },
+        {
+          model: Counter,
+          as: 'counter',
+          attributes: ['id', 'code', 'name', 'counter_number', 'led_board_number', 'transaction_office_id', 'is_active']
+        },
+        {
+          model: TransactionOffice,
+          as: 'transaction_offices',
+          attributes: ['id', 'code', 'name', 'address'],
+          through: { attributes: [] }
+        }
+      ]
+    });
+
+    if (!user) {
+      return {
+        success: false,
+        message: 'Không tìm thấy nhân viên cho quầy này',
+        data: null
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Lấy thông tin nhân viên thành công',
+      data: user.toJSON()
+    };
+
+  } catch (error) {
+    console.error('Get user by counter code error:', error);
+    return {
+      success: false,
+      message: 'Lỗi khi lấy thông tin nhân viên: ' + error.message,
+      data: null
+    };
+  }
+};

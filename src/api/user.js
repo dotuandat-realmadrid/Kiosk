@@ -346,3 +346,85 @@ export const getUserCounter = async (userId) => {
     throw error;
   }
 };
+
+/**
+ * Lấy user theo counter_id
+ * @param {string} counterId - ID của counter
+ * @returns {Promise<Object>} - Thông tin user
+ */
+export const getUserByCounterId = async (counterId) => {
+  try {
+    if (!counterId) {
+      throw new Error('counter_id là bắt buộc');
+    }
+
+    const response = await fetch(`${API}/users/counter/${counterId}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.message || "Lấy thông tin nhân viên thất bại!"
+      );
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message);
+    }
+
+    console.log("Get user by counter_id result:", result);
+    return result.data;
+  } catch (error) {
+    console.error("Get user by counter_id error:", error);
+    message.error(error.message);
+    throw error;
+  }
+};
+
+/**
+ * Lấy user theo counter code
+ * @param {string} counterCode - Code của counter
+ * @returns {Promise<Object>} - Thông tin user
+ */
+export const getUserByCounterCode = async (counterCode) => {
+  try {
+    if (!counterCode) {
+      throw new Error('counter code là bắt buộc');
+    }
+
+    const response = await fetch(`${API}/users/counter-code/${counterCode}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.message || "Lấy thông tin nhân viên thất bại!"
+      );
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message);
+    }
+
+    console.log("Get user by counter code result:", result);
+    return result.data;
+  } catch (error) {
+    console.error("Get user by counter code error:", error);
+    message.error(error.message);
+    throw error;
+  }
+};

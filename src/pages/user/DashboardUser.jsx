@@ -1,5 +1,5 @@
-import { Breadcrumb, Button, Col, message, Row, Spin, Table, Tabs, Typography } from "antd";
-import React, { useCallback, useEffect, useState } from "react";
+import { Breadcrumb, Button, Col, message, Modal, Row, Select, Spin, Table, Tabs, Typography } from "antd";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { MdPerson } from "react-icons/md";
@@ -13,9 +13,11 @@ import {
   cancelTransaction,
   updateTransaction,
 } from "../../api/transaction";
+import { getUserByCounterCode } from "../../api/user";
 import UseWebSocket from "../../hooks/UseWebSocket";
 
 const { Text } = Typography;
+const { Option } = Select;
 
 // ==========================================
 // HELPER: map status → label tiếng Việt
@@ -94,6 +96,23 @@ function DashboardUser() {
   const [pdfFileName, setPdfFileName]         = useState("");
   const [generatingPdf, setGeneratingPdf]     = useState(false);
 
+  // ==========================================
+  // CHUYỂN VÉ MODAL STATE
+  // ==========================================
+  const [transferModalVisible, setTransferModalVisible] = useState(false);
+  const [transferRecord, setTransferRecord]             = useState(null);
+  const [transferServiceId, setTransferServiceId]       = useState(null);
+  const [transferCounterCode, setTransferCounterCode]   = useState(null);
+  const [transferring, setTransferring]                 = useState(false);
+  const [serviceOptions, setServiceOptions]             = useState([]);
+  const [counterOptions, setCounterOptions]             = useState([]);
+  const [loadingServices, setLoadingServices]           = useState(false);
+  const [loadingCounters, setLoadingCounters]           = useState(false);
+
+  // REF để đánh dấu đang trong quá trình chuyển vé
+  // tránh websocket ghi đè selectedRecord(null) vừa set
+  const isTransferringRef = useRef(false);
+
   // ĐỒNG HỒ REALTIME
   const [now, setNow] = useState(new Date());
   useEffect(() => {
@@ -130,6 +149,44 @@ function DashboardUser() {
     }
   }, [userId]);
 
+  const fetchServices = useCallback(async () => {
+    setLoadingServices(true);
+    try {
+      const { API } = await import("../../api/auth");
+      const { getToken } = await import("../../services/localStorageService");
+      const response = await fetch(`${API}/services?size=100`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const result = await response.json();
+      if (result.success) {
+        setServiceOptions(result.data || []);
+      }
+    } catch (error) {
+      console.error("Lỗi tải dịch vụ:", error);
+    } finally {
+      setLoadingServices(false);
+    }
+  }, []);
+
+  const fetchCounters = useCallback(async () => {
+    setLoadingCounters(true);
+    try {
+      const { API } = await import("../../api/auth");
+      const { getToken } = await import("../../services/localStorageService");
+      const response = await fetch(`${API}/counters?size=100`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const result = await response.json();
+      if (result.success) {
+        setCounterOptions(result.data || []);
+      }
+    } catch (error) {
+      console.error("Lỗi tải quầy:", error);
+    } finally {
+      setLoadingCounters(false);
+    }
+  }, []);
+
   // ==========================================
   // WEBSOCKET
   // ==========================================
@@ -141,18 +198,32 @@ function DashboardUser() {
     "update-transaction": useCallback((data) => {
       fetchActiveTransactions();
       fetchCancelledTransactions();
+      // Bỏ qua nếu đang trong quá trình chuyển vé (tránh ghi đè null vừa set)
+      if (isTransferringRef.current) return;
       if (selectedRecord?.id === data.id) {
-        getTransactionById(data.id).then(setSelectedRecord).catch(console.error);
+        // Vé bị chuyển sang quầy khác → clear panel
+        if (data.counter_id && data.counter_id !== counterId) {
+          setSelectedRecord(null);
+        } else {
+          getTransactionById(data.id).then(setSelectedRecord).catch(console.error);
+        }
       }
-    }, [fetchActiveTransactions, fetchCancelledTransactions, selectedRecord]),
+    }, [fetchActiveTransactions, fetchCancelledTransactions, selectedRecord, counterId]),
 
     "status-changed": useCallback((data) => {
       fetchActiveTransactions();
       fetchCancelledTransactions();
+      // Bỏ qua nếu đang trong quá trình chuyển vé
+      if (isTransferringRef.current) return;
       if (selectedRecord?.id === data.id) {
-        getTransactionById(data.id).then(setSelectedRecord).catch(console.error);
+        // Vé bị chuyển sang quầy khác → clear panel
+        if (data.counter_id && data.counter_id !== counterId) {
+          setSelectedRecord(null);
+        } else {
+          getTransactionById(data.id).then(setSelectedRecord).catch(console.error);
+        }
       }
-    }, [fetchActiveTransactions, fetchCancelledTransactions, selectedRecord]),
+    }, [fetchActiveTransactions, fetchCancelledTransactions, selectedRecord, counterId]),
   });
 
   useEffect(() => {
@@ -165,6 +236,101 @@ function DashboardUser() {
   // ==========================================
   const hasServingTransaction = waitingList.some((r) => r.status === "serving");
   const firstWaiting          = waitingList.find((r) => r.status === "waiting");
+
+  // Helper kiểm tra counter có active không (hỗ trợ cả 2 kiểu tên field)
+  const isCounterActive = (counter) => {
+    if (counter.isActive !== undefined) return counter.isActive !== false;
+    if (counter.is_active !== undefined) return counter.is_active !== false;
+    return true; // mặc định coi là active nếu không có field
+  };
+
+  // ==========================================
+  // HANDLER — MỞ MODAL CHUYỂN VÉ
+  // ==========================================
+  const handleOpenTransferModal = async (record) => {
+    if (!record || isTamNghi) return;
+    setTransferRecord(record);
+    setTransferServiceId(record.service?.id || null);
+    setTransferCounterCode(counterId || null);
+    setTransferModalVisible(true);
+    fetchServices();
+    fetchCounters();
+  };
+
+  // ==========================================
+  // HANDLER — XÁC NHẬN CHUYỂN VÉ
+  // ==========================================
+  const handleConfirmTransfer = async () => {
+    if (!transferRecord?.id) return;
+    if (!transferCounterCode) {
+      message.warning("Vui lòng chọn quầy chuyển đến!");
+      return;
+    }
+    if (transferCounterCode === counterId) {
+      message.warning("Vui lòng chọn quầy khác với quầy hiện tại!");
+      return;
+    }
+
+    // Kiểm tra quầy được chọn có active không
+    const selectedCounter = counterOptions.find(
+      (c) => c.code === transferCounterCode || c.id === transferCounterCode
+    );
+    if (selectedCounter && !isCounterActive(selectedCounter)) {
+      message.warning("Quầy này hiện không hoạt động, vui lòng chọn quầy khác!");
+      return;
+    }
+
+    setTransferring(true);
+    isTransferringRef.current = true; // bắt đầu chuyển vé, chặn websocket ghi đè
+
+    try {
+      const newCounterId = selectedCounter?.id || transferCounterCode;
+
+      let newUserId = null;
+      try {
+        const counterUser = await getUserByCounterCode(
+          selectedCounter?.code || transferCounterCode
+        );
+        newUserId = counterUser?.id || null;
+      } catch {
+        console.warn("Không tìm được user của quầy, chỉ cập nhật counter_id");
+      }
+
+      const updatePayload = {
+        counter_id: newCounterId,
+        status: "waiting",
+        call_time: null,
+      };
+
+      if (transferServiceId && transferServiceId !== transferRecord?.service?.id) {
+        updatePayload.service_id = transferServiceId;
+      }
+
+      if (newUserId) {
+        updatePayload.user_id = newUserId;
+      }
+
+      await updateTransaction(transferRecord.id, updatePayload);
+
+      // Clear panel trước, sau đó mới fetch để tránh flash nội dung cũ
+      setSelectedRecord(null);
+
+      message.success("Chuyển vé thành công!");
+      setTransferModalVisible(false);
+      setTransferRecord(null);
+      setTransferServiceId(null);
+      setTransferCounterCode(null);
+
+      await fetchActiveTransactions();
+      await fetchCancelledTransactions();
+    } catch (error) {
+      console.error("Lỗi chuyển vé:", error);
+      message.error("Chuyển vé thất bại: " + error.message);
+    } finally {
+      setTransferring(false);
+      isTransferringRef.current = false; // kết thúc, cho phép websocket hoạt động lại
+    }
+  };
 
   // ==========================================
   // HANDLER — BIỂU MẪU
@@ -316,7 +482,6 @@ function DashboardUser() {
 
   // ==========================================
   // HANDLER — KẾT THÚC
-  // Chỉ thực hiện được khi giao dịch đang ở trạng thái "serving"
   // ==========================================
   const handleKetThuc = async () => {
     if (!selectedRecord?.id) return;
@@ -341,12 +506,10 @@ function DashboardUser() {
       await completeTransaction(recordId, { end_time: endTime });
       message.success("Kết thúc giao dịch thành công!");
 
-      // Fetch lại danh sách mới
       const result = await getActiveTransactionsByUser(userId);
       const newList = result.data || [];
       setWaitingList(newList);
 
-      // Ưu tiên chọn record đang "serving", nếu không có thì null
       const servingRecord = newList.find((r) => r.status === "serving");
       if (servingRecord) {
         try {
@@ -531,6 +694,7 @@ function DashboardUser() {
             <Button
               title="Chuyển đổi vé"
               disabled={isTamNghi}
+              onClick={() => handleOpenTransferModal(record)}
               style={{ background: "none", border: "none", padding: "0 4px", width: "min-content", height: "min-content" }}
             >
               <FaEdit style={{ color: isTamNghi ? "#ccc" : "#636363", cursor: isTamNghi ? "default" : "pointer", fontSize: "14px" }} />
@@ -626,9 +790,7 @@ function DashboardUser() {
 
   const isCompleting = completingId === selectedRecord?.id;
   const isCancelling = cancellingId === selectedRecord?.id;
-
-  // Nút KẾT THÚC chỉ active khi status === "serving"
-  const canComplete = hasSelected && selectedRecord.status === "serving" && !isTamNghi && !isCompleting;
+  const canComplete  = hasSelected && selectedRecord.status === "serving" && !isTamNghi && !isCompleting;
 
   // ==========================================
   // RENDER
@@ -843,6 +1005,7 @@ function DashboardUser() {
 
                   <Button
                     disabled={!hasSelected || isTamNghi}
+                    onClick={() => selectedRecord && handleOpenTransferModal(selectedRecord)}
                     style={{
                       background: hasSelected && !isTamNghi ? "#0099FF" : "#E0E0E0",
                       border: "none",
@@ -852,11 +1015,6 @@ function DashboardUser() {
                     CHUYỂN VÉ
                   </Button>
 
-                  {/*
-                    KẾT THÚC:
-                    - disabled khi status KHÔNG phải "serving"
-                    - Màu xanh chỉ khi canComplete === true, còn lại xám
-                  */}
                   <Button
                     disabled={!canComplete}
                     loading={isCompleting}
@@ -896,6 +1054,175 @@ function DashboardUser() {
           </div>
         </Col>
       </Row>
+
+      {/* ==========================================
+          MODAL CHUYỂN ĐỔI VÉ
+          ========================================== */}
+      <Modal
+        open={transferModalVisible}
+        onCancel={() => {
+          if (!transferring) {
+            setTransferModalVisible(false);
+            setTransferRecord(null);
+            setTransferServiceId(null);
+            setTransferCounterCode(null);
+          }
+        }}
+        footer={null}
+        width={620}
+        closable={!transferring}
+        maskClosable={!transferring}
+        styles={{ header: { padding: 0, marginBottom: 0 }, body: { padding: 0 } }}
+        style={{ top: 80 }}
+      >
+        {/* Header */}
+        <div style={{ fontWeight: "bold", fontSize: "16px", padding: "12px" }}>
+          CHUYỂN ĐỔI VÉ
+        </div>
+
+        <div style={{ padding: "24px 28px 20px 28px" }}>
+          <Row gutter={32}>
+            {/* Cột trái: Thông tin vé */}
+            <Col span={10}>
+              <div style={{ borderRight: "1px solid #e0e0e0", paddingRight: "24px", height: "100%" }}>
+                <Text
+                  strong
+                  style={{
+                    display: "block",
+                    textAlign: "center",
+                    marginBottom: "16px",
+                    fontSize: "13px",
+                    color: "#555",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  THÔNG TIN VÉ
+                </Text>
+
+                <div style={{ marginBottom: "10px" }}>
+                  <Text strong>Số vé: </Text>
+                  <Text>{transferRecord?.ticket_code || "—"}</Text>
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <Text strong>Dịch vụ: </Text>
+                  <Text>{transferRecord?.service?.name_vi || "—"}</Text>
+                </div>
+                <div>
+                  <Text strong>Giờ in vé: </Text>
+                  <Text>{transferRecord?.print_time || "—"}</Text>
+                </div>
+              </div>
+            </Col>
+
+            {/* Cột phải: Thông tin chuyển đổi */}
+            <Col span={14}>
+              <Text
+                strong
+                style={{
+                  display: "block",
+                  textAlign: "center",
+                  marginBottom: "16px",
+                  fontSize: "13px",
+                  color: "#555",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                THÔNG TIN CHUYỂN ĐỔI
+              </Text>
+
+              {/* Chọn dịch vụ */}
+              <div style={{ marginBottom: "16px" }}>
+                <Text strong style={{ display: "block", marginBottom: "6px" }}>
+                  Chọn dịch vụ
+                </Text>
+                <Select
+                  style={{ width: "100%" }}
+                  placeholder="Chọn dịch vụ..."
+                  value={transferServiceId}
+                  onChange={(val) => setTransferServiceId(val)}
+                  loading={loadingServices}
+                  showSearch
+                  optionFilterProp="children"
+                  allowClear
+                >
+                  {serviceOptions.map((svc) => (
+                    <Option key={svc.id} value={svc.id}>
+                      {svc.name_vi || svc.name || svc.code}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+
+              {/* Chọn quầy chuyển đến */}
+              <div style={{ marginBottom: "8px" }}>
+                <Text strong style={{ display: "block", marginBottom: "6px" }}>
+                  Chọn quầy chuyển đến
+                </Text>
+                <Select
+                  style={{ width: "100%" }}
+                  placeholder="Quầy..."
+                  value={transferCounterCode}
+                  onChange={(value) => setTransferCounterCode(value)}
+                  loading={loadingCounters}
+                  showSearch
+                  optionFilterProp="children"
+                  allowClear
+                >
+                  {counterOptions.map((counter) => {
+                    const inactive = !isCounterActive(counter);
+                    return (
+                      <Option
+                        key={counter.id}
+                        value={counter.id || counter.code}
+                        disabled={inactive}
+                        style={{ color: inactive ? "#bbb" : undefined }}
+                      >
+                        {counter.name || counter.code}
+                        {inactive && " (Không hoạt động)"}
+                      </Option>
+                    );
+                  })}
+                </Select>
+              </div>
+            </Col>
+          </Row>
+
+          {/* Footer buttons */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: "10px",
+              marginTop: "24px",
+              borderTop: "1px solid #f0f0f0",
+              paddingTop: "16px",
+            }}
+          >
+            <Button
+              disabled={transferring}
+              onClick={() => {
+                setTransferModalVisible(false);
+                setTransferRecord(null);
+                setTransferServiceId(null);
+                setTransferCounterCode(null);
+              }}
+              style={{ minWidth: "90px" }}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="primary"
+              loading={transferring}
+              onClick={handleConfirmTransfer}
+              style={{ background: "#0099FF", border: "none", minWidth: "90px" }}
+            >
+              Xác nhận
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* PDF MODAL */}
       {pdfModalVisible && (

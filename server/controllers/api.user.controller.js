@@ -469,3 +469,55 @@ exports.updateCounter = async (req, res) => {
     });
   }
 };
+
+/**
+ * Lấy user theo counter_id
+ * GET /api/users/counter/:counterId
+ */
+exports.getUserByCounterId = async (req, res) => {
+  try {
+    const { counterId } = req.params;
+
+    const result = await userService.getUserByCounterId(counterId);
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error('Controller - Get user by counter_id error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi server: ' + error.message,
+      data: null
+    });
+  }
+};
+
+/**
+ * Lấy user theo counter code
+ * GET /api/users/counter-code/:counterCode
+ */
+exports.getUserByCounterCode = async (req, res) => {
+  try {
+    const { counterCode } = req.params;
+
+    const result = await userService.getUserByCounterCode(counterCode);
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error('Controller - Get user by counter code error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi server: ' + error.message,
+      data: null
+    });
+  }
+};

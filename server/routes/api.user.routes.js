@@ -4,7 +4,8 @@
 module.exports = app => {
   const users = require("../controllers/api.user.controller.js");
   const { authenticateToken, checkRole, checkAllRoles, checkAnyRole } = require("../middlewares/auth.middleware.js");
-  var router = require("express").Router();
+  const express = require('express');
+  var router = express.Router();
 
   // ========== USER CRUD ==========
 
@@ -37,6 +38,18 @@ module.exports = app => {
 
   // Delete a User with id
   router.delete("/:id", authenticateToken, checkRole("ADMIN"), users.delete);
+
+  /**
+   * Lấy user theo counter_id
+   * GET /api/users/counter/:counterId
+   */
+  router.get('/counter/:counterId', authenticateToken, users.getUserByCounterId);
+
+  /**
+   * Lấy user theo counter code
+   * GET /api/users/counter-code/:counterCode
+   */
+  router.get('/counter-code/:counterCode', authenticateToken, users.getUserByCounterCode);
 
   app.use('/api/users', router);
 };

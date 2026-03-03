@@ -362,11 +362,18 @@ exports.findAllTransactions = async (filters, pagination) => {
 
 /**
  * Cập nhật transaction
- * Các trường được phép update: call_time, wait_status, end_time, status, user_id, counter_id
+ * Các trường được phép update: call_time, wait_status, end_time,
+ * status, user_id, counter_id, service_id
  */
 exports.updateTransaction = async (id, updateData) => {
   const ALLOWED_FIELDS = [
-    'call_time', 'wait_status', 'end_time', 'status', 'user_id', 'counter_id'
+    'call_time',
+    'wait_status',
+    'end_time',
+    'status',
+    'user_id',
+    'counter_id',
+    'service_id'       // <–– cho phép thay đổi dịch vụ
   ];
 
   const data = {};
@@ -376,6 +383,13 @@ exports.updateTransaction = async (id, updateData) => {
 
   if (Object.keys(data).length === 0) {
     return { success: false, message: 'Không có trường hợp lệ để cập nhật' };
+  }
+
+  // Nếu có service_id, kiểm tra tồn tại (một lớp bảo vệ nữa, mặc dù
+  // controller thường đã gọi validateForeignKeys)
+  if (data.service_id) {
+    const svc = await Service.findByPk(data.service_id);
+    if (!svc) return { success: false, message: 'Dịch vụ không tồn tại' };
   }
 
   data.mtime = Math.floor(Date.now() / 1000);
