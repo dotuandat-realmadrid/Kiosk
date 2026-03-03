@@ -469,7 +469,7 @@ function ECenterBoardDetailAdmin() {
         items={[
           { title: <Link to="/admin">Admin</Link> },
           { title: <Link to="/admin/devices-manager">Quản lý thiết bị</Link> },
-          { title: <Link to="/admin/e-center-board">Bảng điện tử</Link> },
+          { title: <Link to="/admin/e-center-boards">Bảng điện tử</Link> },
           { title: board?.name || "N/A" },
         ]}
       />

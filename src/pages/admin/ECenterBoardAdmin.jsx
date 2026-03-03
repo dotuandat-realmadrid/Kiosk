@@ -691,7 +691,7 @@ const ECenterBoardAdmin = () => {
   };
 
   const formatDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "N/A");
-  const navigateToBoardDetail = (id) => navigate(`/admin/e-center-board/${id}`);
+  const navigateToBoardDetail = (id) => navigate(`/admin/e-center-boards/${id}`);
 
   const selectedStatus = getSelectedStatus();
 
@@ -746,7 +746,7 @@ const ECenterBoardAdmin = () => {
         items={[
           { title: <Link to="/admin">Admin</Link> },
           { title: <Link to="/admin/devices-manager">Quản lý thiết bị</Link> },
-          { title: <Link to="/admin/e-center-board">Bảng điện tử</Link> },
+          { title: <Link to="/admin/e-center-boards">Bảng điện tử</Link> },
           { title: "Danh sách bảng điện tử" },
         ]}
       />

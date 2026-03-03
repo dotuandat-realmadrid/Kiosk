@@ -761,7 +761,7 @@ const Kiosk = () => {
   };
 
   const navigateToKioskDetail = (id) => {
-    navigate(`/admin/kiosk/${id}`);
+    navigate(`/admin/kiosks/${id}`);
   };
 
   const columns = [
@@ -844,7 +844,7 @@ const Kiosk = () => {
         items={[
           { title: <Link to="/admin">Admin</Link> },
           { title: <Link to="/admin/devices-manager">Quản lý thiết bị</Link> },
-          { title: <Link to="/admin/kiosk">Kiosk</Link> },
+          { title: <Link to="/admin/kiosks">Kiosk</Link> },
           { title: "Danh sách kiosk" },
         ]}
       />

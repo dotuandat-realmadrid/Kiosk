@@ -413,7 +413,7 @@ function KioskDetail() {
         items={[
           { title: <Link to="/admin">Admin</Link> },
           { title: <Link to="/admin/devices-manager">Quản lý thiết bị</Link> },
-          { title: <Link to="/admin/kiosk">Kiosk</Link> },
+          { title: <Link to="/admin/kiosks">Kiosk</Link> },
           { title: kiosk?.name || "N/A" },
         ]}
       />

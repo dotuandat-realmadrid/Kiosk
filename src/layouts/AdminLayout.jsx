@@ -101,9 +101,9 @@ const AdminLayout = () => {
     ...(hasPermission(["ADMIN", "USER"])
       ? [
           getItem("QUẢN LÝ THIẾT BỊ", "devices-manager", <AppstoreOutlined />, 0, [
-            getItem("Kiosk", "/admin/kiosk", <TabletOutlined />),
-            getItem("Counter", "/admin/counter", <DesktopOutlined />),
-            getItem("E Center Board", "/admin/e-center-board", <MonitorOutlined />),
+            getItem("Kiosk", "/admin/kiosks", <TabletOutlined />),
+            getItem("Counter", "/admin/counters", <DesktopOutlined />),
+            getItem("E Center Board", "/admin/e-center-boards", <MonitorOutlined />),
             // getItem("Feedback", "/admin/feedback", <CommentOutlined />),
             // getItem("Smart LCD", "/admin/smart-lcd", <MobileOutlined />),
           ]),

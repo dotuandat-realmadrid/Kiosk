@@ -468,7 +468,7 @@ function CounterDetail() {
         items={[
           { title: <Link to="/admin">Admin</Link> },
           { title: <Link to="/admin/devices-manager">Quản lý thiết bị</Link> },
-          { title: <Link to="/admin/counter">Quầy</Link> },
+          { title: <Link to="/admin/counters">Quầy</Link> },
           { title: counter?.name || "N/A" },
         ]}
       />

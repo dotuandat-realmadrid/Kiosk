@@ -841,7 +841,7 @@ const Counter = () => {
   };
 
   const navigateToCounterDetail = (id) => {
-    navigate(`/admin/counter/${id}`);
+    navigate(`/admin/counters/${id}`);
   };
 
   const columns = [
@@ -915,7 +915,7 @@ const Counter = () => {
         items={[
           { title: <Link to="/admin">Admin</Link> },
           { title: <Link to="/admin/devices-manager">Quản lý thiết bị</Link> },
-          { title: <Link to="/admin/counter">Quầy</Link> },
+          { title: <Link to="/admin/counters">Quầy</Link> },
           { title: "Danh sách quầy" },
         ]}
       />

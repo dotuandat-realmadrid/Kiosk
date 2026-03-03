@@ -38,6 +38,7 @@ import SettingUser from "../pages/user/SettingUser";
 import ECenterBoard from "../pages/home/ECenterBoard";
 import ECenterBoardAdmin from "../pages/admin/ECenterBoardAdmin";
 import ECenterBoardDetailAdmin from "../pages/admin/ECenterBoardDetailAdmin";
+import ReportAdmin from "../pages/admin/ReportAdmin";
 
 const AppRoutes = () => {
   return (
@@ -100,12 +101,13 @@ const AppRoutes = () => {
           <Route path="branches/:id" element={<BranchDetail />} />
 
           {/* QUẢN LÝ THIẾT BỊ */}
-          <Route path="kiosk" element={<Kiosk />} />
-          <Route path="kiosk/:id" element={<KioskDetail />} />
-          <Route path="counter" element={<Counter />} />
-          <Route path="counter/:id" element={<CounterDetail />} />
-          <Route path="e-center-board" element={<ECenterBoardAdmin />} />
-          <Route path="e-center-board/:id" element={<ECenterBoardDetailAdmin />} />
+          <Route path="kiosks" element={<Kiosk />} />
+          <Route path="kiosks/:id" element={<KioskDetail />} />
+          <Route path="counters" element={<Counter />} />
+          <Route path="counters/:id" element={<CounterDetail />} />
+          <Route path="e-center-boards" element={<ECenterBoardAdmin />} />
+          <Route path="e-center-boards/:id" element={<ECenterBoardDetailAdmin />} />
+          <Route path="transactions" element={<ReportAdmin />} />
         </Route>
 
         {/* USER */}
