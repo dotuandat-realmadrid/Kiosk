@@ -17,6 +17,7 @@ import {
   Select,
   Space,
   Table,
+  Tag,
   Tooltip,
   Typography,
 } from "antd";
@@ -392,6 +393,18 @@ const Province = () => {
       align: "center",
       render: (created_at) => formatDate(created_at),
       width: 120,
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "is_active",
+      key: "is_active",
+      align: "center",
+      width: 120,
+      render: (is_active) => (
+        <Tag color={is_active ? "green" : "red"}>
+          {is_active ? "Kích hoạt" : "Vô hiệu hóa"}
+        </Tag>
+      )
     },
     {
       title: "",

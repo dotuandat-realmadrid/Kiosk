@@ -23,6 +23,7 @@ import {
   Image,
   Row,
   Col,
+  Tag,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import dayjs from "dayjs";
@@ -690,6 +691,17 @@ const Service = () => {
       width: 120,
     },
     {
+      title: "Trạng thái",
+      dataIndex: "is_active",
+      key: "is_active",
+      align: "center",
+      render: (is_active) => (
+        <Tag color={is_active ? "green" : "red"}>
+          {is_active ? "Kích hoạt" : "Vô hiệu hóa"}
+        </Tag>
+      )
+    },
+    {
       title: "",
       key: "actions",
       width: 10,
@@ -715,7 +727,7 @@ const Service = () => {
           { title: <Link to="/admin">Admin</Link> },
           { title: <Link to="/admin/services-manager">Quản lý dịch vụ</Link> },
           { title: <Link to="/admin/services">Dịch vụ</Link> },
-          { title: "Danh sách dịch vu" },
+          { title: "Danh sách dịch vụ" },
         ]}
       />
 

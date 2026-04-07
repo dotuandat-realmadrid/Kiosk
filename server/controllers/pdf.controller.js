@@ -4,7 +4,7 @@ const puppeteer = require('puppeteer');
 const { print } = require('pdf-to-printer');
 
 // Uploads directory (inside server/uploads)
-const uploadsDir = path.join(__dirname, '..', '..', 'public', 'uploads');
+const uploadsDir = path.join(__dirname, '..', '..', 'public', 'uploads', 'pdfs');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }

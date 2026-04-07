@@ -25,6 +25,7 @@ import {
   Space,
   Table,
   Tabs,
+  Tag,
   Tooltip,
   Typography,
 } from "antd";
@@ -725,6 +726,18 @@ const ECenterBoardAdmin = () => {
       key: "created_at",
       align: "center",
       render: (d) => formatDate(d),
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "is_active",
+      key: "is_active",
+      align: "center",
+      // width: 120,
+      render: (is_active) => (
+        <Tag color={is_active ? "green" : "red"}>
+          {is_active ? "Kích hoạt" : "Vô hiệu hóa"}
+        </Tag>
+      )
     },
     {
       title: "",

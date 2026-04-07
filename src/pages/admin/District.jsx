@@ -17,6 +17,7 @@ import {
   Select,
   Space,
   Table,
+  Tag,
   Tooltip,
   Typography,
 } from "antd";
@@ -459,21 +460,21 @@ const District = () => {
       render: (_, record) => (
         <Text>{record.province?.name || "N/A"}</Text>
       ),
-      width: 320,
+      // width: 320,
     },
     {
       title: "Mã Quận/Huyện",
       key: "code",
       align: "center",
       render: (_, record) => <Text>{record.code || "N/A"}</Text>,
-      width: 180,
+      // width: 180,
     },
     {
       title: "Quận/Huyện",
       key: "name",
       align: "center",
       render: (_, record) => <Text>{record.name || "N/A"}</Text>,
-      width: 320,
+      // width: 320,
     },
     {
       title: "Ngày tạo",
@@ -481,7 +482,19 @@ const District = () => {
       key: "created_at",
       align: "center",
       render: (created_at) => formatDate(created_at),
-      width: 120,
+      // width: 120,
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "is_active",
+      key: "is_active",
+      align: "center",
+      // width: 120,
+      render: (is_active) => (
+        <Tag color={is_active ? "green" : "red"}>
+          {is_active ? "Kích hoạt" : "Vô hiệu hóa"}
+        </Tag>
+      )
     },
     {
       title: "",

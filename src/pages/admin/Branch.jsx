@@ -20,6 +20,7 @@ import {
   Space,
   Table,
   Tabs,
+  Tag,
   Tooltip,
   Typography,
 } from "antd";
@@ -808,6 +809,18 @@ const Branch = () => {
       key: "updated_at",
       align: "center",
       render: (updated_at) => formatDate(updated_at),
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "is_active",
+      key: "is_active",
+      align: "center",
+      // width: 120,
+      render: (is_active) => (
+        <Tag color={is_active ? "green" : "red"}>
+          {is_active ? "Kích hoạt" : "Vô hiệu hóa"}
+        </Tag>
+      )
     },
     {
       title: "",

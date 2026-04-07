@@ -43,7 +43,7 @@ function SettingUser() {
       const result = await searchCounters(
         { 
           transaction_office_id: transactionOfficeId,
-          is_active: true // Chỉ lấy counter đang hoạt động
+          // is_active: true // Chỉ lấy counter đang hoạt động
         },
         1,
         100 // Lấy tối đa 100 counter
@@ -79,7 +79,7 @@ function SettingUser() {
         await dispatch(getMyInfo(token, true)); // forceReload = true
       }
 
-      message.success("Cập nhật quầy thành công!");
+      // message.success("Cập nhật quầy thành công!");
       
       // Navigate về trang /user sau khi lưu thành công
       navigate("/user");

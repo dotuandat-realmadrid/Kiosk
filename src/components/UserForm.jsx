@@ -493,13 +493,13 @@ export default function UserForm({
         {isUpdate && (
           <Button
             onClick={handleCancel}
-            style={{ width: "100%", marginBottom: 10 }}
+            style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}
           >
             Hủy chỉnh sửa
           </Button>
         )}
-        <Form.Item>
-          <MyButton style={{ width: "100%" }} htmlType="submit">
+        <Form.Item style={{ display: "flex", justifyContent: "flex-end" }}>
+          <MyButton htmlType="submit">
             {submitButtonText}
           </MyButton>
         </Form.Item>

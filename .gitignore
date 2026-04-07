@@ -57,3 +57,8 @@ Thumbs.db
 .cache/
 .tmp/
 .temp/
+
+# ==============================
+# Optional: Ignore specific files
+# ==============================
+public/uploads/pdfs/

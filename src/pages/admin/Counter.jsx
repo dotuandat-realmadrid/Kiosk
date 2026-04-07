@@ -25,6 +25,7 @@ import {
   Tooltip,
   Typography,
   Alert,
+  Tag,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import dayjs from "dayjs";
@@ -889,6 +890,18 @@ const Counter = () => {
       key: "created_at",
       align: "center",
       render: (created_at) => formatDate(created_at),
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "is_active",
+      key: "is_active",
+      align: "center",
+      // width: 120,
+      render: (is_active) => (
+        <Tag color={is_active ? "green" : "red"}>
+          {is_active ? "Kích hoạt" : "Vô hiệu hóa"}
+        </Tag>
+      )
     },
     {
       title: "",

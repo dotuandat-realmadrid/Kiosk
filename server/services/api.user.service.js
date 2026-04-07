@@ -850,13 +850,13 @@ exports.validateCounterForAssignment = async (counterId, excludeUserId = null) =
     };
   }
   
-  // Kiểm tra counter có active không
-  if (!counter.is_active) {
-    return {
-      valid: false,
-      message: 'Quầy đã bị vô hiệu hóa'
-    };
-  }
+  // // Kiểm tra counter có active không
+  // if (!counter.is_active) {
+  //   return {
+  //     valid: false,
+  //     message: 'Quầy đã bị vô hiệu hóa'
+  //   };
+  // }
   
   // Kiểm tra counter đã được gán cho user khác chưa
   const whereCondition = { counter_id: counterId };
@@ -1037,7 +1037,7 @@ exports.getUserByCounterId = async (counterId) => {
 };
 
 /**
- * ✅ Lấy user theo counter code (dùng cho quầy gọi số)
+ *  Lấy user theo counter code (dùng cho quầy gọi số)
  */
 exports.getUserByCounterCode = async (counterCode) => {
   try {

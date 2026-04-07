@@ -14,6 +14,8 @@ import {
   updateTransaction,
 } from "../../api/transaction";
 import { getUserByCounterCode } from "../../api/user";
+// ✅ THÊM: import toggleCounters, getCounterById
+import { toggleCounters, getCounterById } from "../../api/counter";
 import UseWebSocket from "../../hooks/UseWebSocket";
 
 const { Text } = Typography;
@@ -77,7 +79,12 @@ function DashboardUser() {
   const userId    = userInfo?.id;
   const counterId = userInfo?.counter?.id || userInfo?.counter_id || null;
 
-  const [isTamNghi, setIsTamNghi]             = useState(false);
+  const [isTamNghi, setIsTamNghi]                       = useState(false);
+  // ✅ THÊM: loading state cho Tạm Nghỉ / Khôi Phục
+  const [togglingCounter, setTogglingCounter]           = useState(false);
+  // ✅ THÊM: loading khi fetch trạng thái is_active của counter lúc mount
+  const [loadingCounterStatus, setLoadingCounterStatus] = useState(false);
+
   const [waitingList, setWaitingList]           = useState([]);
   const [cancelledList, setCancelledList]       = useState([]);
   const [loadingWaiting, setLoadingWaiting]     = useState(false);
@@ -168,11 +175,14 @@ function DashboardUser() {
     }
   }, []);
 
+  // ✅ SỬA: fetchCounters lấy TẤT CẢ quầy (cả active lẫn inactive)
+  // Việc filter chỉ cho chọn active được xử lý ở phần render Option
   const fetchCounters = useCallback(async () => {
     setLoadingCounters(true);
     try {
       const { API } = await import("../../api/auth");
       const { getToken } = await import("../../services/localStorageService");
+      // Không truyền is_active filter → lấy tất cả quầy
       const response = await fetch(`${API}/counters?size=100`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
@@ -231,6 +241,26 @@ function DashboardUser() {
     fetchCancelledTransactions();
   }, [fetchActiveTransactions, fetchCancelledTransactions]);
 
+  // ✅ THÊM: Fetch trạng thái is_active của counter hiện tại khi mount
+  // để đồng bộ nút Tạm Nghỉ / Khôi Phục với trạng thái thực tế trên server
+  useEffect(() => {
+    if (!counterId) return;
+    setLoadingCounterStatus(true);
+    getCounterById(counterId)
+      .then((counter) => {
+        // is_active = false  →  đang tạm nghỉ
+        // is_active = true   →  đang hoạt động bình thường
+        const active =
+          counter?.is_active !== undefined ? counter.is_active :
+          counter?.isActive  !== undefined ? counter.isActive  : true;
+        setIsTamNghi(!active);
+      })
+      .catch((err) => {
+        console.error("Lỗi lấy trạng thái quầy:", err);
+      })
+      .finally(() => setLoadingCounterStatus(false));
+  }, [counterId]);
+
   // ==========================================
   // HELPERS
   // ==========================================
@@ -275,6 +305,7 @@ function DashboardUser() {
     const selectedCounter = counterOptions.find(
       (c) => c.code === transferCounterCode || c.id === transferCounterCode
     );
+    // ✅ Double-check: dù đã disabled ở UI, vẫn kiểm tra lại ở đây
     if (selectedCounter && !isCounterActive(selectedCounter)) {
       message.warning("Quầy này hiện không hoạt động, vui lòng chọn quầy khác!");
       return;
@@ -419,19 +450,52 @@ function DashboardUser() {
   };
 
   // ==========================================
-  // HANDLER — TẠM NGHỈ / KHÔI PHỤC
+  // HANDLER — TẠM NGHỈ
+  // ✅ SỬA: gọi toggleCounters để set is_active = false cho quầy hiện tại
   // ==========================================
-  const handleTamNghi = () => {
+  const handleTamNghi = async () => {
     if (hasServingTransaction) {
       message.warning("Đang có giao dịch đang được phục vụ, không thể tạm nghỉ!");
       return;
     }
-    setIsTamNghi(true);
-    setSelectedRecord(null);
+    if (!counterId) {
+      message.warning("Không tìm thấy thông tin quầy hiện tại!");
+      return;
+    }
+    setTogglingCounter(true);
+    try {
+      await toggleCounters(counterId, false);
+      setIsTamNghi(true);
+      setSelectedRecord(null);
+      // message.success("Đã tạm nghỉ!");
+    } catch (error) {
+      console.error("Lỗi tạm nghỉ:", error);
+      message.error("Không thể tạm nghỉ: " + error.message);
+    } finally {
+      setTogglingCounter(false);
+    }
   };
 
-  const handleKhoiPhuc = () => {
-    setIsTamNghi(false);
+  // ==========================================
+  // HANDLER — KHÔI PHỤC
+  // ✅ SỬA: gọi toggleCounters để set is_active = true cho quầy hiện tại
+  // ==========================================
+  const handleKhoiPhuc = async () => {
+    if (!counterId) {
+      message.warning("Không tìm thấy thông tin quầy hiện tại!");
+      return;
+    }
+    setTogglingCounter(true);
+    try {
+      await toggleCounters(counterId, true);
+      setIsTamNghi(false);
+      // message.success("Đã khôi phục hoạt động!");
+    } catch (error) {
+      console.error("Lỗi khôi phục:", error);
+      message.error("Không thể khôi phục: " + error.message);
+    } finally {
+      setTogglingCounter(false);
+    }
   };
 
   // ==========================================
@@ -504,7 +568,7 @@ function DashboardUser() {
     try {
       const endTime = toTimeString(new Date());
       await completeTransaction(recordId, { end_time: endTime });
-      message.success("Kết thúc giao dịch thành công!");
+      // message.success("Kết thúc giao dịch thành công!");
 
       const result = await getActiveTransactionsByUser(userId);
       const newList = result.data || [];
@@ -539,11 +603,32 @@ function DashboardUser() {
     try {
       const endTime = toTimeString(new Date());
       await cancelTransaction(recordId, { end_time: endTime });
+      // message.success("Hủy vé thành công!");
+
+      // Sau khi hủy: fetch lại danh sách, rồi quyết định panel bên phải hiển thị gì
+      const [activeResult, cancelledResult] = await Promise.all([
+        getActiveTransactionsByUser(userId),
+        getCancelledTransactionsByUser(userId),
+      ]);
+      const newActiveList = activeResult.data || [];
+      setWaitingList(newActiveList);
+      setCancelledList(cancelledResult.data || []);
+
       if (selectedRecord && selectedRecord.id === recordId) {
-        setSelectedRecord(null);
+        // Ưu tiên hiển thị vé đang serving tại quầy
+        const servingRecord = newActiveList.find((r) => r.status === "serving");
+        if (servingRecord) {
+          try {
+            const detail = await getTransactionById(servingRecord.id);
+            setSelectedRecord(detail);
+          } catch {
+            setSelectedRecord(servingRecord);
+          }
+        } else {
+          // Không có vé serving → về trạng thái mặc định
+          setSelectedRecord(null);
+        }
       }
-      await fetchActiveTransactions();
-      await fetchCancelledTransactions();
     } catch (error) {
       console.error("Lỗi hủy vé:", error);
       message.error("Hủy vé thất bại!");
@@ -560,7 +645,7 @@ function DashboardUser() {
     const recordId = record.id;
     setRestoringId(recordId);
     try {
-      await updateTransaction(recordId, { status: "waiting", end_time: null, call_time: null });
+      await updateTransaction(recordId, { status: "waiting", user_id: null, counter_id: null, end_time: null, call_time: null });
       if (selectedRecord && selectedRecord.id === recordId) {
         setSelectedRecord(null);
       }
@@ -788,9 +873,14 @@ function DashboardUser() {
     ? (STATUS_COLOR[selectedRecord.status] || "#0099FF")
     : "#0099FF";
 
-  const isCompleting = completingId === selectedRecord?.id;
-  const isCancelling = cancellingId === selectedRecord?.id;
-  const canComplete  = hasSelected && selectedRecord.status === "serving" && !isTamNghi && !isCompleting;
+  const isCompleting      = completingId === selectedRecord?.id;
+  const isCancelling      = cancellingId === selectedRecord?.id;
+  const isRestoringPanel  = restoringId  === selectedRecord?.id;
+  // ✅ THÊM: vé đang chọn có status cancelled không?
+  const isCancelledRecord = hasSelected && selectedRecord.status === "cancelled";
+  const canComplete       = hasSelected && selectedRecord.status === "serving" && !isTamNghi && !isCompleting;
+  // ✅ THÊM: có thể khôi phục vé đang chọn từ panel bên phải
+  const canRestorePanel   = isCancelledRecord && !isTamNghi && !isRestoringPanel;
 
   // ==========================================
   // RENDER
@@ -880,11 +970,14 @@ function DashboardUser() {
               TIẾP THEO
             </Button>
 
+            {/* ✅ SỬA: loading khi đang toggle hoặc đang fetch trạng thái ban đầu */}
             <Button
               className={isTamNghi ? "btn-khoi-phuc" : "btn-tam-nghi"}
+              loading={togglingCounter || loadingCounterStatus}
+              disabled={togglingCounter || loadingCounterStatus}
               onClick={isTamNghi ? handleKhoiPhuc : handleTamNghi}
             >
-              {isTamNghi ? "KHÔI PHỤC" : "TẠM NGHỈ"}
+              {!togglingCounter && !loadingCounterStatus && (isTamNghi ? "KHÔI PHỤC" : "TẠM NGHỈ")}
             </Button>
           </div>
         </Col>
@@ -1036,18 +1129,35 @@ function DashboardUser() {
                     KẾT THÚC
                   </Button>
 
-                  <Button
-                    disabled={!hasSelected || isTamNghi || isCancelling}
-                    loading={isCancelling}
-                    onClick={() => selectedRecord && handleHuyVe(selectedRecord)}
-                    style={{
-                      background: hasSelected && !isTamNghi ? "#cc3333" : "#E0E0E0",
-                      border: "none",
-                      color: hasSelected && !isTamNghi ? "white" : "#999",
-                    }}
-                  >
-                    HỦY VÉ
-                  </Button>
+                  {/* ✅ SỬA: button 2 trạng thái — HỦY VÉ khi chưa hủy, KHÔI PHỤC khi đã hủy */}
+                  {isCancelledRecord ? (
+                    <Button
+                      loading={isRestoringPanel}
+                      disabled={!canRestorePanel}
+                      onClick={() => selectedRecord && handleKhoiPhucVe(selectedRecord)}
+                      style={{
+                        background: canRestorePanel ? "#28a745" : "#E0E0E0",
+                        border: "none",
+                        color: canRestorePanel ? "white" : "#999",
+                        cursor: canRestorePanel ? "pointer" : "not-allowed",
+                      }}
+                    >
+                      KHÔI PHỤC
+                    </Button>
+                  ) : (
+                    <Button
+                      disabled={!hasSelected || isTamNghi || isCancelling}
+                      loading={isCancelling}
+                      onClick={() => selectedRecord && handleHuyVe(selectedRecord)}
+                      style={{
+                        background: hasSelected && !isTamNghi ? "#cc3333" : "#E0E0E0",
+                        border: "none",
+                        color: hasSelected && !isTamNghi ? "white" : "#999",
+                      }}
+                    >
+                      HỦY VÉ
+                    </Button>
+                  )}
                 </div>
               </>
             )}
@@ -1156,6 +1266,7 @@ function DashboardUser() {
               </div>
 
               {/* Chọn quầy chuyển đến */}
+              {/* ✅ SỬA: hiển thị tất cả quầy nhưng chỉ cho chọn quầy is_active = true */}
               <div style={{ marginBottom: "8px" }}>
                 <Text strong style={{ display: "block", marginBottom: "6px" }}>
                   Chọn quầy chuyển đến
@@ -1171,16 +1282,21 @@ function DashboardUser() {
                   allowClear
                 >
                   {counterOptions.map((counter) => {
+                    // ✅ Quầy inactive bị disabled, không cho chọn
                     const inactive = !isCounterActive(counter);
+                    // ✅ Quầy hiện tại của user cũng không cho chọn
+                    const isCurrentCounter = counter.id === counterId;
+                    const isDisabled = inactive || isCurrentCounter;
                     return (
                       <Option
                         key={counter.id}
                         value={counter.id || counter.code}
-                        disabled={inactive}
-                        style={{ color: inactive ? "#bbb" : undefined }}
+                        disabled={isDisabled}
+                        style={{ color: isDisabled ? "#bbb" : undefined }}
                       >
                         {counter.name || counter.code}
                         {inactive && " (Không hoạt động)"}
+                        {!inactive && isCurrentCounter && " (Quầy hiện tại)"}
                       </Option>
                     );
                   })}
